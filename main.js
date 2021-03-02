@@ -2,24 +2,20 @@ const { editDocument } = require("application");
 const { selection, Shadow } = require("scenegraph");
 let panel;
 let selectionHistory = [];
-let scaleStroke = window.localStorage.getItem("stroke") == "true" ? true : false;
-let scaleCorners = window.localStorage.getItem("corners") == "true" ? true : false;
-let scaleShadow = window.localStorage.getItem("shadow") == "true" ? true : false;
 
 function create() {
-    let strokeCheck = scaleStroke ? "checked" : "";
-    let cornersCheck = scaleCorners ? "checked" : "";
-    let shadowCheck = scaleShadow ? "checked" : "";
-    let strokeImageDisplay = scaleStroke ? "inline" : "none";
-    let cornersImageDisplay = scaleCorners ? "inline" : "none";
-    let shadowImageDisplay = scaleShadow ? "inline" : "none";
+    let strokeCheck = window.localStorage.getItem("stroke") == "true" ? "checked" : "";
+    let cornersCheck = window.localStorage.getItem("corners") == "true" ? "checked" : "";
+    let shadowCheck = window.localStorage.getItem("shadow") == "true" ? "checked" : "";
+    let strokeImageDisplay = window.localStorage.getItem("stroke") == "true" ? "inline" : "none";
+    let cornersImageDisplay = window.localStorage.getItem("corners") == "true" ? "inline" : "none";
+    let shadowImageDisplay = window.localStorage.getItem("shadow") == "true" ? "inline" : "none";
     const HTML =
         `<style>
             #main {}
             h2 {margin: 0; line-height: 150%;}
             #preview {display: block; border: 1px solid #ddd; background: #efefef;}
             #preview img {width: 100%;}
-    let shadowImageDisplay = scaleCorners ? "inline" : "none";
             #preview #shadowImage {display: `+shadowImageDisplay+`; z-index: 3; position: absolute; left: 0; top: 0;}
             #preview #backgroundImage {display: inline; z-index: 2;}
             #preview #strokeImage {display: `+strokeImageDisplay+`; z-index: 3; position: absolute; left: 0; top: 0;}
@@ -83,24 +79,30 @@ async function update() {
     if(selection.items.length > 0){
         selection.items.forEach(function (item) {
             if (item.guid in selectionHistory){
-                if(selectionHistory[item.guid].width != item.width || selectionHistory[item.guid].height != item.height){
+                if(selectionHistory[item.guid].width != item.localBounds.width || selectionHistory[item.guid].height != item.localBounds.height){
                     btnPrimary.removeAttribute("disabled");
-                    // calulate scale using previous entry
                     console.log("update entry");
-                    let scaleWidth = item.width / selectionHistory[item.guid].width;
-                    let scaleHeight = item.height / selectionHistory[item.guid].height;
-                    let finalScale = (scaleWidth + scaleHeight) / 2;
+                    // calulate scale using previous entry
+                    let scaleWidth = item.localBounds.width / selectionHistory[item.guid].width;
+                    let scaleHeight = item.localBounds.height / selectionHistory[item.guid].height;
+                    let finalScaleWidth = isNaN(scaleWidth) ? 0 : scaleWidth;
+                    let finalScaleHeight = isNaN(scaleHeight) ? 0 : scaleHeight;
+                    let scale = (finalScaleWidth + finalScaleHeight) / 2;
+                    let finalScale = isNaN(scale) ? 1 : scale;
                     // update
-                    selectionHistory[item.guid].width = item.width;
-                    selectionHistory[item.guid].height = item.height;
+                    selectionHistory[item.guid].width = item.localBounds.width;
+                    selectionHistory[item.guid].height = item.localBounds.height;
                     selectionHistory[item.guid].scale = finalScale;
+                    console.log(selectionHistory[item.guid].width, selectionHistory[item.guid].height, selectionHistory[item.guid].scale);
                 }
-            }else {
+            }else{
                 // save
                 console.log("new entry");
                 var myArray = [];
-                myArray['width'] = item.width;
-                myArray['height'] = item.height;
+                myArray['width'] = item.localBounds.width;
+                myArray['height'] = item.localBounds.width;
+                myArray['scale'] = 1;
+                console.log(myArray);
                 selectionHistory[item.guid] = myArray;
             }
         });
@@ -111,11 +113,13 @@ async function update() {
 
 function scaleAttributes(){
     selection.items.forEach(function (item) {
-        let scale = selectionHistory[item.guid].scale ? selectionHistory[item.guid].scale : 1;
-        if(scaleStroke == true){
+        let rawScale = selectionHistory[item.guid].scale;
+        let scale = (Math.round(rawScale * 2) / 2).toFixed(1);
+
+        if(window.localStorage.getItem("stroke") == "true"){
             item.strokeWidth = item.strokeWidth * scale;
         }
-        if(scaleCorners == true){
+        if(window.localStorage.getItem("corners") == "true"){
             if(item.hasRoundedCorners){
                 item.cornerRadii = { 
                     topLeft: item.cornerRadii.topLeft * scale, 
@@ -125,10 +129,11 @@ function scaleAttributes(){
                 };
             }
         }
-        if(scaleShadow == true){
-            item.shadow = new Shadow(item.shadow.x * scale, item.shadow.y * scale, item.shadow.blur * scale, item.shadow.color);
+        if(window.localStorage.getItem("shadow") == "true"){
+            if(item.shadow){
+                item.shadow = new Shadow(item.shadow.x * scale, item.shadow.y * scale, item.shadow.blur * scale, item.shadow.color);
+            }
         }
-
     });
 }
 
