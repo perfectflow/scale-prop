@@ -25,6 +25,7 @@ function create() {
             #options ul li {width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: center;}
             #options ul li.separator {width: 100%; height: 0px; border-top: 1px solid #ddd; margin: 10px 0px;}
             #options ul li h3 {margin: 0;}
+            #messageBox {width: 100%; text-align: center; line-height: 150%; color: #8E8E8E;}
             button {width: 100%;}
         </style>
         <div id="main">
@@ -50,6 +51,8 @@ function create() {
             </div>
             <br/><br/>
             <button id="btnPrimary" uxp-variant="cta" disabled>Scale attributes</button>
+            <br/>
+            <div id="messageBox"></div>
         </div>
         `;
 
@@ -82,32 +85,21 @@ async function update() {
     const btnPrimary = document.querySelector("#btnPrimary");
     if(selection.items.length > 0){
         selection.items.forEach(function (item) {
-            if (item.guid in selectionHistory){
-                if(selectionHistory[item.guid].width != item.localBounds.width || selectionHistory[item.guid].height != item.localBounds.height){
-                    btnPrimary.removeAttribute("disabled");
-                    console.log("update entry");
-                    // calulate scale using previous entry
-                    let scaleWidth = item.localBounds.width / selectionHistory[item.guid].width;
-                    let scaleHeight = item.localBounds.height / selectionHistory[item.guid].height;
-                    let finalScaleWidth = isNaN(scaleWidth) ? 0 : scaleWidth;
-                    let finalScaleHeight = isNaN(scaleHeight) ? 0 : scaleHeight;
-                    let scale = (finalScaleWidth + finalScaleHeight) / 2;
-                    let finalScale = isNaN(scale) ? 1 : scale;
-                    // update
-                    selectionHistory[item.guid].width = item.localBounds.width;
-                    selectionHistory[item.guid].height = item.localBounds.height;
-                    selectionHistory[item.guid].scale = finalScale;
-                    // console.log(selectionHistory[item.guid].width, selectionHistory[item.guid].height, selectionHistory[item.guid].scale);
-                }
+            if(item.constructor.name == "Artboard"){
+                showMessage("Artboard is not supported.");
+            }else if(item.constructor.name == "RepeatGrid"){
+                showMessage("RepeatGrid is not supported.");
+            }else if(item.constructor.name == "SymbolInstance"){
+                showMessage("SymbolInstance is not supported.");
+            }else if(item.constructor.name == "ScrollableGroup"){
+                showMessage("ScrollableGroup is not supported.");
+            // handle group or shape
+            }else if(item.constructor.name == "Group"){
+                item.children.forEach(function (subitem) {
+                    processItem(subitem);
+                });
             }else{
-                // save
-                console.log("new entry");
-                var myArray = [];
-                myArray['width'] = item.localBounds.width;
-                myArray['height'] = item.localBounds.width;
-                myArray['scale'] = 1;
-                // console.log(myArray);
-                selectionHistory[item.guid] = myArray;
+                processItem(item);
             }
         });
     }else{
@@ -115,53 +107,116 @@ async function update() {
     }
 }
 
+function processItem(item){
+    const btnPrimary = document.querySelector("#btnPrimary");
+    if (item.guid in selectionHistory){
+        if(selectionHistory[item.guid].width != item.localBounds.width || selectionHistory[item.guid].height != item.localBounds.height){
+            btnPrimary.removeAttribute("disabled");
+            sessionHistoryUpdateEntry(item);
+        }
+    }else{
+        sessionHistoryNewEntry(item);
+    }
+}
+
+function sessionHistoryNewEntry(item){
+    // console.log("new entry");
+    var myArray = [];
+    myArray['width'] = item.localBounds.width;
+    myArray['height'] = item.localBounds.width;
+    myArray['scale'] = 1;
+    // console.log(myArray);
+    selectionHistory[item.guid] = myArray;
+}
+
+function sessionHistoryUpdateEntry(item){
+    // console.log("update entry");
+    // calulate scale using previous entry
+    let scaleWidth = item.localBounds.width / selectionHistory[item.guid].width;
+    let scaleHeight = item.localBounds.height / selectionHistory[item.guid].height;
+    let finalScaleWidth = isNaN(scaleWidth) ? 0 : scaleWidth;
+    let finalScaleHeight = isNaN(scaleHeight) ? 0 : scaleHeight;
+    let scale = (finalScaleWidth + finalScaleHeight) / 2;
+    let finalScale = isNaN(scale) ? 1 : scale;
+    // update
+    selectionHistory[item.guid].width = item.localBounds.width;
+    selectionHistory[item.guid].height = item.localBounds.height;
+    selectionHistory[item.guid].scale = finalScale;
+    // console.log(selectionHistory[item.guid].width, selectionHistory[item.guid].height, selectionHistory[item.guid].scale);
+}
+
 function scaleAttributes(){
     selection.items.forEach(function (item) {
-        let scale = selectionHistory[item.guid].scale;
-        if(window.localStorage.getItem("stroke") == "true"){
-            if(item.strokeEnabled){
-                console.log("here 1");
-                if(window.localStorage.getItem("round") == "true"){
-                    console.log(item.strokeWidth, scale);
-                    item.strokeWidth = rnd(item.strokeWidth * scale);
-                }else{
-                    item.strokeWidth = item.strokeWidth * scale;
-                }  
-            }
-        }
-        if(window.localStorage.getItem("corners") == "true"){
-            if(item.hasRoundedCorners){
-                if(window.localStorage.getItem("round") == "true"){
-                    item.cornerRadii = { 
-                        topLeft: rnd(item.cornerRadii.topLeft * scale),
-                        topRight: rnd(item.cornerRadii.topRight * scale),
-                        bottomRight: rnd(item.cornerRadii.bottomRight * scale),
-                        bottomLeft: rnd(item.cornerRadii.bottomLeft * scale)
-                    };
-                }else{
-                    item.cornerRadii = { 
-                        topLeft: item.cornerRadii.topLeft * scale, 
-                        topRight: item.cornerRadii.topRight * scale, 
-                        bottomRight: item.cornerRadii.bottomRight * scale, 
-                        bottomLeft: item.cornerRadii.bottomLeft * scale
-                    };
-                }
-            }
-        }
-        if(window.localStorage.getItem("shadow") == "true"){
-            if(item.shadow){
-                if(window.localStorage.getItem("round") == "true"){
-                    item.shadow = new Shadow(rnd(item.shadow.x * scale), rnd(item.shadow.y * scale), rnd(item.shadow.blur * scale), item.shadow.color);
-                }else{
-                    item.shadow = new Shadow(item.shadow.x * scale, item.shadow.y * scale, item.shadow.blur * scale, item.shadow.color);
-                }
-            }
+        if(item.constructor.name == "Artboard"){
+            showMessage("Artboard is not supported and was skipped.");
+        }else if(item.constructor.name == "RepeatGrid"){
+            showMessage("RepeatGrid is not supported and was skipped.");
+        }else if(item.constructor.name == "SymbolInstance"){
+            showMessage("SymbolInstance is not supported and was skipped.");
+        }else if(item.constructor.name == "ScrollableGroup"){
+            showMessage("ScrollableGroup is not supported and was skipped.");
+        // handle group or shape
+        }else if(item.constructor.name == "Group"){
+            item.children.forEach(function (subitem) {
+                scaleItem(subitem);
+            });
+        }else{
+            scaleItem(item);
         }
     });
 }
 
+function scaleItem(item){
+    let scale = selectionHistory[item.guid].scale;
+    if(window.localStorage.getItem("stroke") == "true"){
+        if(item.strokeEnabled){
+            if(window.localStorage.getItem("round") == "true"){
+                item.strokeWidth = rnd(item.strokeWidth * scale);
+            }else{
+                item.strokeWidth = item.strokeWidth * scale;
+            }  
+        }
+    }
+    if(window.localStorage.getItem("corners") == "true"){
+        if(item.hasRoundedCorners){
+            if(window.localStorage.getItem("round") == "true"){
+                item.cornerRadii = { 
+                    topLeft: rnd(item.cornerRadii.topLeft * scale),
+                    topRight: rnd(item.cornerRadii.topRight * scale),
+                    bottomRight: rnd(item.cornerRadii.bottomRight * scale),
+                    bottomLeft: rnd(item.cornerRadii.bottomLeft * scale)
+                };
+            }else{
+                item.cornerRadii = { 
+                    topLeft: item.cornerRadii.topLeft * scale, 
+                    topRight: item.cornerRadii.topRight * scale, 
+                    bottomRight: item.cornerRadii.bottomRight * scale, 
+                    bottomLeft: item.cornerRadii.bottomLeft * scale
+                };
+            }
+        }
+    }
+    if(window.localStorage.getItem("shadow") == "true"){
+        if(item.shadow){
+            if(window.localStorage.getItem("round") == "true"){
+                item.shadow = new Shadow(rnd(item.shadow.x * scale), rnd(item.shadow.y * scale), rnd(item.shadow.blur * scale), item.shadow.color);
+            }else{
+                item.shadow = new Shadow(item.shadow.x * scale, item.shadow.y * scale, item.shadow.blur * scale, item.shadow.color);
+            }
+        }
+    }
+}
+
 function rnd(number){
     return parseInt((Math.ceil(number * 2) / 2).toFixed(1));
+}
+
+function showMessage(message){
+    let messageBox = document.querySelector("#messageBox");
+    let msg = document.createElement("span");
+    msg.insertAdjacentHTML("afterbegin", message + "<br/>");
+    setTimeout(function () {msg.style.display='none'}, 1500);
+    messageBox.appendChild(msg);
 }
 
 module.exports = {
