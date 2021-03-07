@@ -2,6 +2,8 @@ const { editDocument } = require("application");
 const { selection, Shadow } = require("scenegraph");
 let panel;
 let selectionHistory = [];
+let btnPrimaryLabel = "Scale attributes";
+let notSupportedObjects = ["Artboard", "RepeatGrid", "SymbolInstance"];
 
 function create() {
     let strokeCheck = window.localStorage.getItem("stroke") == "true" ? "checked" : "";
@@ -25,7 +27,7 @@ function create() {
             #options ul li {width: 100%; display: flex; flex-direction: row; justify-content: space-between; align-items: center;}
             #options ul li.separator {width: 100%; height: 0px; border-top: 1px solid #ddd; margin: 10px 0px;}
             #options ul li h3 {margin: 0;}
-            #messageBox {width: 100%; text-align: center; line-height: 150%; color: #8E8E8E;}
+            #messageBox {width: 100%; text-align: center; line-height: 150%; color: #CB3131;}
             button {width: 100%;}
         </style>
         <div id="main">
@@ -50,7 +52,7 @@ function create() {
                 </ul>
             </div>
             <br/><br/>
-            <button id="btnPrimary" uxp-variant="cta" disabled>Scale attributes</button>
+            <button id="btnPrimary" uxp-variant="cta" disabled>`+btnPrimaryLabel+`</button>
             <br/>
             <div id="messageBox"></div>
         </div>
@@ -70,7 +72,9 @@ function create() {
     panel.querySelector("#btnPrimary").addEventListener("click", async function(){
         this.setAttribute("disabled");
         editDocument({ editLabel: "Scale attributes" }, function () {
-            scaleAttributes();
+            selection.items.forEach(function (item) {
+                scaleItem(item);
+            });
         });
     });
     
@@ -85,22 +89,7 @@ async function update() {
     const btnPrimary = document.querySelector("#btnPrimary");
     if(selection.items.length > 0){
         selection.items.forEach(function (item) {
-            if(item.constructor.name == "Artboard"){
-                showMessage("Artboard is not supported.");
-            }else if(item.constructor.name == "RepeatGrid"){
-                showMessage("RepeatGrid is not supported.");
-            }else if(item.constructor.name == "SymbolInstance"){
-                showMessage("SymbolInstance is not supported.");
-            }else if(item.constructor.name == "ScrollableGroup"){
-                showMessage("ScrollableGroup is not supported.");
-            // handle group or shape
-            }else if(item.constructor.name == "Group"){
-                item.children.forEach(function (subitem) {
-                    processItem(subitem);
-                });
-            }else{
-                processItem(item);
-            }
+            processItem(item);
         });
     }else{
         btnPrimary.setAttribute("disabled");
@@ -108,14 +97,26 @@ async function update() {
 }
 
 function processItem(item){
-    const btnPrimary = document.querySelector("#btnPrimary");
-    if (item.guid in selectionHistory){
-        if(selectionHistory[item.guid].width != item.localBounds.width || selectionHistory[item.guid].height != item.localBounds.height){
-            btnPrimary.removeAttribute("disabled");
-            sessionHistoryUpdateEntry(item);
+    // console.log("type:" + item.constructor.name);
+    if(notSupportedObjects.includes(item.constructor.name) == false){
+        if(item.children.length > 0){
+            item.children.forEach(function (subitem){
+                processItem(subitem);
+            });
+        }else{
+            const btnPrimary = document.querySelector("#btnPrimary");
+            if (item.guid in selectionHistory){
+                if(selectionHistory[item.guid].width != item.localBounds.width || selectionHistory[item.guid].height != item.localBounds.height){
+                    btnPrimary.removeAttribute("disabled");
+                    highlightPrimaryButton("Click me!");
+                    sessionHistoryUpdateEntry(item);
+                }
+            }else{
+                sessionHistoryNewEntry(item);
+            }
         }
     }else{
-        sessionHistoryNewEntry(item);
+        showMessage(item.constructor.name + " is not supported.");
     }
 }
 
@@ -145,33 +146,26 @@ function sessionHistoryUpdateEntry(item){
     // console.log(selectionHistory[item.guid].width, selectionHistory[item.guid].height, selectionHistory[item.guid].scale);
 }
 
-function scaleAttributes(){
-    selection.items.forEach(function (item) {
-        if(item.constructor.name == "Artboard"){
-            showMessage("Artboard is not supported and was skipped.");
-        }else if(item.constructor.name == "RepeatGrid"){
-            showMessage("RepeatGrid is not supported and was skipped.");
-        }else if(item.constructor.name == "SymbolInstance"){
-            showMessage("SymbolInstance is not supported and was skipped.");
-        }else if(item.constructor.name == "ScrollableGroup"){
-            showMessage("ScrollableGroup is not supported and was skipped.");
-        // handle group or shape
-        }else if(item.constructor.name == "Group"){
-            item.children.forEach(function (subitem) {
+function scaleItem(item){
+    if(notSupportedObjects.includes(item.constructor.name) == false){
+        if(item.children.length > 0){
+            item.children.forEach(function (subitem){
                 scaleItem(subitem);
             });
-        }else{
-            scaleItem(item);
+        }else{   
+            scaleItemAttributes(item);
         }
-    });
+    }else{
+        showMessage(item.constructor.name + " is not supported and was skipped.");
+    }
 }
 
-function scaleItem(item){
+function scaleItemAttributes(item){
     let scale = selectionHistory[item.guid].scale;
     if(window.localStorage.getItem("stroke") == "true"){
         if(item.strokeEnabled){
             if(window.localStorage.getItem("round") == "true"){
-                item.strokeWidth = rnd(item.strokeWidth * scale);
+                item.strokeWidth = round(item.strokeWidth * scale);
             }else{
                 item.strokeWidth = item.strokeWidth * scale;
             }  
@@ -181,10 +175,10 @@ function scaleItem(item){
         if(item.hasRoundedCorners){
             if(window.localStorage.getItem("round") == "true"){
                 item.cornerRadii = { 
-                    topLeft: rnd(item.cornerRadii.topLeft * scale),
-                    topRight: rnd(item.cornerRadii.topRight * scale),
-                    bottomRight: rnd(item.cornerRadii.bottomRight * scale),
-                    bottomLeft: rnd(item.cornerRadii.bottomLeft * scale)
+                    topLeft: round(item.cornerRadii.topLeft * scale),
+                    topRight: round(item.cornerRadii.topRight * scale),
+                    bottomRight: round(item.cornerRadii.bottomRight * scale),
+                    bottomLeft: round(item.cornerRadii.bottomLeft * scale)
                 };
             }else{
                 item.cornerRadii = { 
@@ -199,7 +193,7 @@ function scaleItem(item){
     if(window.localStorage.getItem("shadow") == "true"){
         if(item.shadow){
             if(window.localStorage.getItem("round") == "true"){
-                item.shadow = new Shadow(rnd(item.shadow.x * scale), rnd(item.shadow.y * scale), rnd(item.shadow.blur * scale), item.shadow.color);
+                item.shadow = new Shadow(round(item.shadow.x * scale), round(item.shadow.y * scale), round(item.shadow.blur * scale), item.shadow.color);
             }else{
                 item.shadow = new Shadow(item.shadow.x * scale, item.shadow.y * scale, item.shadow.blur * scale, item.shadow.color);
             }
@@ -207,7 +201,7 @@ function scaleItem(item){
     }
 }
 
-function rnd(number){
+function round(number){
     return parseInt((Math.ceil(number * 2) / 2).toFixed(1));
 }
 
@@ -217,6 +211,14 @@ function showMessage(message){
     msg.insertAdjacentHTML("afterbegin", message + "<br/>");
     setTimeout(function () {msg.style.display='none'}, 1500);
     messageBox.appendChild(msg);
+}
+
+function highlightPrimaryButton(message){
+    const btnPrimary = document.querySelector("#btnPrimary");
+    btnPrimary.innerHTML = message;
+    setTimeout(function(){
+        btnPrimary.innerHTML = btnPrimaryLabel;
+    }, 750);
 }
 
 module.exports = {
