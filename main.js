@@ -97,7 +97,6 @@ async function update() {
 }
 
 function processItem(item){
-    // console.log("type:" + item.constructor.name);
     if(notSupportedObjects.includes(item.constructor.name) == false){
         if(item.children.length > 0){
             item.children.forEach(function (subitem){
@@ -191,8 +190,7 @@ function scaleItemAttributes(item){
         }
     }
     if(window.localStorage.getItem("shadow") == "true"){
-        if(item.shadow.visible){
-            console.log("has shadow: " + item.constructor.name);
+        if(item.shadow && item.shadow.visible){
             if(window.localStorage.getItem("round") == "true"){
                 item.shadow = new Shadow(round(item.shadow.x * scale), round(item.shadow.y * scale), round(item.shadow.blur * scale), item.shadow.color);
             }else{
