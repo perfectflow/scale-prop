@@ -191,7 +191,8 @@ function scaleItemAttributes(item){
         }
     }
     if(window.localStorage.getItem("shadow") == "true"){
-        if(item.shadow){
+        if(item.shadow.visible){
+            console.log("has shadow: " + item.constructor.name);
             if(window.localStorage.getItem("round") == "true"){
                 item.shadow = new Shadow(round(item.shadow.x * scale), round(item.shadow.y * scale), round(item.shadow.blur * scale), item.shadow.color);
             }else{
