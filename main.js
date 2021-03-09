@@ -3,7 +3,7 @@ const { selection, Shadow } = require("scenegraph");
 let panel;
 let selectionHistory = [];
 let btnPrimaryLabel = "Scale attributes";
-let notSupportedObjects = ["Artboard", "RepeatGrid", "SymbolInstance"];
+let notSupportedObjects = ["Artboard", "RepeatGrid", "SymbolInstance", "BooleanGroup"];
 
 function create() {
     let strokeCheck = window.localStorage.getItem("stroke") == "true" ? "checked" : "";
