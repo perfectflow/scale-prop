@@ -1,7 +1,7 @@
 {
   "id": "39a109a7",
   "name": "Scale Prop",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "icons": [
     { "width": 24, "height": 24, "path": "images/icon@1x.png" },
     { "width": 48, "height": 48, "path": "images/icon@2x.png" }

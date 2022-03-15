@@ -61,23 +61,25 @@ function create() {
     panel = document.createElement("div");
     panel.innerHTML = HTML;
 
-    panel.querySelectorAll(".updateSetting").forEach(item => {
-        item.addEventListener('click', async function () {
-            window.localStorage.setItem(this.name, this.checked ? true : false);
-            let layer = document.querySelector("#" + this.name + "Image");
-            layer.style.display = this.checked ? "inline" : "none";
+    setTimeout(function(){
+        panel.querySelectorAll(".updateSetting").forEach(item => {
+            item.addEventListener('click', async function () {
+                window.localStorage.setItem(this.name, this.checked ? true : false);
+                let layer = document.querySelector("#" + this.name + "Image");
+                layer.style.display = this.checked ? "inline" : "none";
+            })
         })
-    })
-
-    panel.querySelector("#btnPrimary").addEventListener("click", async function(){
-        this.setAttribute("disabled");
-        editDocument({ editLabel: "Scale attributes" }, function () {
-            selection.items.forEach(function (item) {
-                scaleItem(item);
+    
+        panel.querySelector("#btnPrimary").addEventListener("click", async function(){
+            this.setAttribute("disabled");
+            editDocument({ editLabel: "Scale attributes" }, function () {
+                selection.items.forEach(function (item) {
+                    scaleItem(item);
+                });
             });
         });
-    });
-    
+    }, 100);
+
     return panel;
 }
 
